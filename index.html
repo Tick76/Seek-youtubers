@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrap Mechanic — Ютуберы и игроки</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --border: #21262d;
+            --text: #c9d1d9;
+            --text-secondary: #8b949e;
+            --online: #3fb950;
+            --offline: #6e7681;
+            --accent: #f78166;
+            --accent2: #58a6ff;
+            --scrap: #f0883e;
+            --header-bg: #0d1117e8;
+            --glow: rgba(63, 185, 80, 0.25);
+            --card-hover: #1c2129;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(240, 136, 62, 0.04) 0%, transparent 55%),
+                radial-gradient(ellipse at 80% 60%, rgba(88, 166, 255, 0.03) 0%, transparent 55%);
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--header-bg);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f0883e, #e05d2b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 20px rgba(240, 136, 62, 0.3);
+        }
+        .header h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+        }
+        .header h1 span {
+            color: var(--scrap);
+        }
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+        .stat-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .stat-dot.online {
+            background: var(--online);
+            box-shadow: 0 0 10px var(--glow);
+            animation: pulse-dot 2s infinite;
+        }
+        .stat-dot.offline {
+            background: var(--offline);
+        }
+        @keyframes pulse-dot {
+            0%, 100% { box-shadow: 0 0 6px var(--glow); }
+            50% { box-shadow: 0 0 18px rgba(63, 185, 80, 0.55); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn:hover {
+            background: var(--card-hover);
+            border-color: #444;
+            color: #fff;
+        }
+        .btn.active {
+            background: var(--accent2);
+            border-color: var(--accent2);
+            color: #fff;
+            font-weight: 600;
+        }
+        .btn-refresh {
+            background: var(--scrap);
+            border-color: var(--scrap);
+            color: #000;
+            font-weight: 600;
+        }
+        .btn-refresh:hover {
+            background: #f79a55;
+            border-color: #f79a55;
+        }
+        .search-input {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 0.875rem;
+            min-width: 180px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+        }
+
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 28px 20px 50px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: #444;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            background: var(--card-hover);
+        }
+        .card-top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+        .avatar-wrapper {
+            position: relative;
+            flex-shrink: 0;
+        }
+        .avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--border);
+        }
+        .card.online-card .avatar {
+            border-color: var(--online);
+            box-shadow: 0 0 16px rgba(63, 185, 80, 0.2);
+        }
+        .status-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid var(--card-bg);
+        }
+        .card.online-card .status-indicator {
+            background: var(--online);
+            box-shadow: 0 0 12px rgba(63, 185, 80, 0.6);
+            animation: pulse-indicator 2.5s infinite;
+        }
+        .card.offline-card .status-indicator {
+            background: var(--offline);
+        }
+        @keyframes pulse-indicator {
+            0%, 100% { box-shadow: 0 0 8px rgba(63, 185, 80, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(63, 185, 80, 0.8); }
+        }
+        .card-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #fff;
+        }
+        .card-handle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+        .card-status-text {
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .card-status-text.online-text { color: var(--online); }
+        .card-status-text.offline-text { color: var(--offline); }
+
+        .card-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 14px 0;
+        }
+        .game-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .game-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            background: #1e2530;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .game-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+        .game-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #e6edf3;
+        }
+        .game-none {
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 0.85rem;
+        }
+        .footer-info {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #238636;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            z-index: 999;
+            animation: slideIn 0.35s ease-out, fadeOut 0.5s 1.8s forwards;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes slideIn {
+            from { transform: translateY(80px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(20px); }
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+        }
+        @media (max-width: 480px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo-icon">🔧</div>
+            <h1>Scrap<span>Mechanic</span> Hub</h1>
+        </div>
+        <div class="header-stats">
+            <span class="stat"><span class="stat-dot online"></span> В сети: <strong id="countOnline">0</strong></span>
+            <span class="stat"><span class="stat-dot offline"></span> Не в сети: <strong id="countOffline">0</strong></span>
+            <span class="stat" style="color:#f0883e;">📺 Всего: <strong id="countTotal">0</strong></span>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="controls">
+            <button class="btn active filter-btn" data-filter="all">👥 Все</button>
+            <button class="btn filter-btn" data-filter="online">🟢 В сети</button>
+            <button class="btn filter-btn" data-filter="offline">⚫ Не в сети</button>
+            <button class="btn filter-btn" data-filter="scrap">🔧 Играют в Scrap Mechanic</button>
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Поиск...">
+            <button class="btn btn-refresh" id="btnRefresh">🔄 Обновить статусы</button>
+        </div>
+
+        <div class="grid" id="cardsGrid"></div>
+        <div class="footer-info">
+            Данные BummerBum и СЕДАЯ ВОРОНА — из Steam. Остальные — симулированы.<br>
+            <span id="lastUpdated">Обновлено: сейчас</span>
+        </div>
+    </div>
+
+    <script>
+        // ==================== РЕАЛЬНЫЕ АККАУНТЫ STEAM ====================
+        const realAccounts = [
+            {
+                id: 0,
+                name: 'BummerBum',
+                realName: 'Александр',
+                handle: '@BummerBum (Steam)',
+                avatar: 'https://avatars.fastly.steamstatic.com/f61a1c2e9ee05236d6cbc89add14976eb05b6cd9_full.jpg',
+                isOnline: false,
+                currentGame: 'Scrap Mechanic',
+                lastSeen: '28 июля 2026 г.',
+                totalHours: 89,
+                achievements: '4/34',
+                isRealData: true
+            },
+            {
+                id: 1,
+                name: 'СЕДАЯ ВОРОНА',
+                realName: '',
+                handle: '@СЕДАЯ ВОРОНА (Steam)',
+                avatar: 'https://avatars.fastly.steamstatic.com/ca50b9e210d3c20e83d6eae4d6f1e240e0abe527.jpg',
+                isOnline: true,                // по классу in-game
+                currentGame: null,             // конкретная игра неизвестна
+                lastSeen: 'В сети',
+                totalHours: null,
+                achievements: null,
+                isRealData: true
+            }
+        ];
+
+        // ==================== ВЫМЫШЛЕННЫЕ ЮТУБЕРЫ ====================
+        const fakeYoutubers = [
+            { id: 10, name: 'ScrapMan', handle: '@ScrapManYT', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_mXJ8VQJNBSkq-hxwG1kPCz0u8X5qPqJY0VWbxXKw=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 11, name: 'Moonbo', handle: '@MoonboYT', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_nK5sFZqF8E0FzY9g8sDp2kL5mNqH7vXsJ1Vt0=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 12, name: 'Kan Gaming', handle: '@KanGaming', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_mR0tP0zY9VvN5fJ8lKq7wXsD3mB2cF4hGn1U=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 13, name: 'Durf', handle: '@DurfYT', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_lP2qF9ZxYvVnJ5fK8wXsD0mB3cF7hGn1U2=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 14, name: 'Nerdcubed', handle: '@OfficialNerdcubed', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_nM3sK9qL8xF7pVwJ2bD5fH0mR4cY6tG9nA=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 15, name: 'Lets Game It Out', handle: '@LetsGameItOut', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_oP5sT0qM9xF8vVwK2cD7fJ0mR4bY6tG9nB=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 16, name: 'Scrap Mechanic Creations', handle: '@ScrapCreations', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_pR6tU1rN0xF9wWvK3dD8gJ1mS5cZ7hH0oC=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 17, name: 'MechanicMaster', handle: '@MechanicMasterYT', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_qS7uV2sO1yG0xXwL4eE9hK2nT6dA8iI1pD=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 18, name: 'CraftBench', handle: '@CraftBench', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_rT8vW3tP2zH1yYxM5fF0iL3oU7eB9jJ2qE=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 19, name: 'GearHead Games', handle: '@GearHeadGames', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_sU9wX4uQ3aI2zZyN6gG1jM4pV8fC0kK3rF=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 20, name: 'WrenchWiz', handle: '@WrenchWizYT', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_tV0xY5vR4bJ3aAzO7hH2kN5qW9gD1lL4sG=s176-c-k-c0x00ffffff-no-rj' },
+            { id: 21, name: 'ScrapWorld', handle: '@ScrapWorldOfficial', avatar: 'https://yt3.googleusercontent.com/ytc/AIdro_uW1yZ6wS5cK4bB0P8iI3lO6qX0hE2mM5tH=s176-c-k-c0x00ffffff-no-rj' }
+        ];
+
+        const games = ['Scrap Mechanic','Scrap Mechanic','Scrap Mechanic','Minecraft','Terraria','Besiege',
+                        'Trailmakers','Space Engineers','Satisfactory','Factorio','Kerbal Space Program',
+                        'Garry\'s Mod','Teardown','Poly Bridge 3'];
+
+        function randomStatus() {
+            const online = Math.random() < 0.55;
+            return {
+                isOnline: online,
+                currentGame: online ? games[Math.floor(Math.random() * games.length)] : null,
+                lastSeen: online ? 'сейчас' : `${Math.floor(Math.random() * 48) + 1} ч. назад`
+            };
+        }
+
+        let allPeople = [];
+
+        function initPeople() {
+            // Сначала реальные аккаунты (уже с готовыми данными)
+            const reals = realAccounts.map(acc => ({...acc}));
+            // Фейковые ютуберы
+            const fakes = fakeYoutubers.map(yt => {
+                const status = randomStatus();
+                return {
+                    ...yt,
+                    ...status,
+                    isRealData: false,
+                    totalHours: null,
+                    achievements: null
+                };
+            });
+            allPeople = [...reals, ...fakes];
+        }
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        function getFiltered() {
+            let filtered = [...allPeople];
+            if (currentFilter === 'online') filtered = filtered.filter(p => p.isOnline);
+            else if (currentFilter === 'offline') filtered = filtered.filter(p => !p.isOnline);
+            else if (currentFilter === 'scrap') filtered = filtered.filter(p => p.isOnline && p.currentGame === 'Scrap Mechanic');
+
+            if (searchQuery.trim()) {
+                const q = searchQuery.trim().toLowerCase();
+                filtered = filtered.filter(p =>
+                    p.name.toLowerCase().includes(q) ||
+                    p.handle.toLowerCase().includes(q) ||
+                    (p.currentGame && p.currentGame.toLowerCase().includes(q))
+                );
+            }
+            return filtered;
+        }
+
+        function renderCards() {
+            const grid = document.getElementById('cardsGrid');
+            const items = getFiltered();
+            if (items.length === 0) {
+                grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-secondary);">
+                    <div style="font-size:3rem;">🔧</div><h3>Никого не найдено</h3></div>`;
+            } else {
+                grid.innerHTML = items.map(p => {
+                    const cardClass = p.isOnline ? 'online-card' : 'offline-card';
+                    const statusText = p.isOnline ? '🟢 В сети' : '⚫ Не в сети';
+                    const statusClass = p.isOnline ? 'online-text' : 'offline-text';
+
+                    // Отображение игры
+                    let gameDisplay;
+                    if (p.isOnline && p.currentGame) {
+                        gameDisplay = p.currentGame === 'Scrap Mechanic' ? '🔧 ' + p.currentGame : '🎮 ' + p.currentGame;
+                    } else if (p.isOnline && !p.currentGame) {
+                        gameDisplay = '🎮 Сейчас в игре';
+                    } else {
+                        gameDisplay = '—';
+                    }
+                    const gameClass = p.isOnline ? '' : 'game-none';
+                    const lastSeen = p.isOnline ? 'Прямо сейчас' : (p.lastSeen || 'давно');
+
+                    // Дополнительная инфа только для реальных аккаунтов с часами
+                    let extraInfo = '';
+                    if (p.isRealData && p.totalHours) {
+                        extraInfo = `<div style="font-size:0.7rem;color:var(--text-secondary);">🎮 ${p.totalHours} ч. | 🏆 ${p.achievements}</div>`;
+                    } else if (p.isRealData) {
+                        extraInfo = `<div style="font-size:0.7rem;color:var(--text-secondary);">⭐ Steam-профиль</div>`;
+                    }
+
+                    return `
+                    <div class="card ${cardClass}">
+                        <div class="card-top">
+                            <div class="avatar-wrapper">
+                                <img class="avatar" src="${p.avatar}" 
+                                     onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23222%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%23fff%22 font-size=%2230%22%3E🔧%3C/text%3E%3C/svg%3E';">
+                                <div class="status-indicator"></div>
+                            </div>
+                            <div style="flex:1;">
+                                <div class="card-name">${p.name} ${p.isRealData ? '⭐' : ''}</div>
+                                <div class="card-handle">${p.handle}</div>
+                                <div class="card-status-text ${statusClass}">${statusText}</div>
+                                ${extraInfo}
+                            </div>
+                        </div>
+                        <hr class="card-divider">
+                        <div class="game-section">
+                            <div class="game-icon">${p.isOnline ? (p.currentGame === 'Scrap Mechanic' ? '🔧' : '🎮') : '💤'}</div>
+                            <div>
+                                <div class="game-label">Во что играет</div>
+                                <div class="game-name ${gameClass}">${gameDisplay}</div>
+                                <div style="font-size:0.7rem;color:var(--text-secondary);">${lastSeen}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            document.getElementById('countOnline').textContent = allPeople.filter(p => p.isOnline).length;
+            document.getElementById('countOffline').textContent = allPeople.filter(p => !p.isOnline).length;
+            document.getElementById('countTotal').textContent = allPeople.length;
+            document.getElementById('lastUpdated').textContent = 'Обновлено: ' + new Date().toLocaleTimeString();
+        }
+
+        function refreshFakeStatuses() {
+            allPeople.forEach(p => {
+                if (p.isRealData) return; // реальные не трогаем
+                const status = randomStatus();
+                p.isOnline = status.isOnline;
+                p.currentGame = status.currentGame;
+                p.lastSeen = status.lastSeen;
+            });
+            renderCards();
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderCards();
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderCards();
+        });
+
+        document.getElementById('btnRefresh').addEventListener('click', refreshFakeStatuses);
+
+        // Старт
+        initPeople();
+        renderCards();
+    </script>
+</body>
+</html>
