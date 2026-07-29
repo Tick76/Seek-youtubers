@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scrap Mechanic — Статус игроков (Live)</title>
+    <title>Scrap Mechanic — Статус игроков (отладка)</title>
     <style>
         :root {
             --bg: #0d1117; --card-bg: #161b22; --border: #21262d;
@@ -51,24 +51,21 @@
         }
         .btn-refresh:hover { background: #f79a55; }
         .footer-note { margin-top: 20px; font-size: 0.75rem; color: var(--text-secondary); text-align: center; }
-        .raw-info { font-size: 0.7rem; color: var(--text-secondary); margin-top: 8px; }
-        .proxy-switch { margin-top: 10px; }
-        .proxy-switch button { background: #333; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; margin: 0 5px; font-family: inherit; }
+        .debug-panel {
+            background: #1a1a2e; color: #ccc; font-family: monospace; font-size: 0.7rem;
+            padding: 10px; margin-top: 20px; max-width: 600px; white-space: pre-wrap;
+            border-radius: 8px; border: 1px solid #333;
+        }
+        .warning { color: #f0883e; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container" id="cardsContainer">Загрузка...</div>
     <div class="btn-refresh" onclick="fetchStatuses()">🔄 Обновить сейчас</div>
-    <div class="proxy-switch">
-        <span style="color:var(--text-secondary)">Прокси: </span>
-        <button onclick="setProxy(0)">AllOrigins</button>
-        <button onclick="setProxy(1)">CorsProxy.io</button>
-        <button onclick="setProxy(2)">Прямой (не сработает)</button>
-    </div>
     <div class="footer-note">
-        Статусы через Steam API с CORS-прокси.<br>
-        Если не работает — попробуй другой прокси или проверь ключ.
+        Используется прокси corsproxy.io. Если не видно данных — проблема с ключом API.
     </div>
+    <div class="debug-panel" id="debugInfo"></div>
 
     <script>
         const API_KEY = '528A8835C087E3CFCAD12AF870392E7B';
@@ -77,42 +74,44 @@
             { steamid: '76561199804148206', name: 'СЕДАЯ ВОРОНА', handle: '' }
         ];
 
-        // Прокси-серверы
-        const PROXIES = [
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => url  // прямой запрос (скорее всего упадет с CORS)
-        ];
-        let currentProxy = 0;
-
-        function setProxy(index) {
-            currentProxy = index;
-            fetchStatuses();
-        }
-
         async function fetchStatuses() {
             const container = document.getElementById('cardsContainer');
-            container.innerHTML = 'Запрос через ' + (currentProxy === 2 ? 'прямой запрос' : 'прокси ' + (currentProxy+1)) + '...';
+            const debug = document.getElementById('debugInfo');
+            container.innerHTML = 'Запрос через corsproxy.io...';
+            debug.textContent = 'Отправка запроса...';
 
             const ids = USERS.map(u => u.steamid).join(',');
             const apiUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${API_KEY}&steamids=${ids}`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
 
             try {
-                const proxyUrl = PROXIES[currentProxy](apiUrl);
                 const response = await fetch(proxyUrl);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
+                
+                // Показываем сырой JSON на странице
+                debug.textContent = JSON.stringify(data, null, 2);
                 console.log('Steam API response:', data);
-                if (!data.response || !data.response.players) throw new Error('Пустые данные');
+
+                if (!data.response || !data.response.players) {
+                    throw new Error('Нет поля response.players');
+                }
+                if (data.response.players.length === 0) {
+                    container.innerHTML = `
+                        <div style="color:#f78166; text-align:center;">
+                            ❌ Steam API вернул пустой список игроков.<br>
+                            Вероятно, <strong>API-ключ недействителен</strong>.<br>
+                            <small>Проверь ключ по прямой ссылке (откроется в новой вкладке):</small><br>
+                            <a href="${apiUrl}" target="_blank" style="color:var(--accent2);">${apiUrl}</a><br>
+                            <small>Если увидишь ошибку Forbidden или Unauthorized — получи новый ключ на <a href="https://steamcommunity.com/dev/apikey">steamcommunity.com/dev/apikey</a></small>
+                        </div>`;
+                    return;
+                }
                 renderCards(data.response.players);
             } catch (err) {
                 console.error(err);
-                container.innerHTML = `
-                    <div style="color:#f78166; text-align:center;">
-                        ❌ Ошибка: ${err.message}<br>
-                        <small>Попробуй другой прокси или проверь ключ.</small><br>
-                        <small>Прямая ссылка для проверки: <a href="${apiUrl}" target="_blank">открыть</a></small>
-                    </div>`;
+                debug.textContent += '\n\nОшибка: ' + err.message;
+                container.innerHTML = `<div style="color:#f78166;">❌ ${err.message}</div>`;
             }
         }
 
@@ -157,16 +156,15 @@
                             ${game ? `<div class="extra">В игре</div>` : ''}
                         </div>
                     </div>
-                    <div class="raw-info">
-                        📋 Статус: ${state} | 🔄 ${new Date().toLocaleTimeString()}
+                    <div class="extra">
+                        📋 personastate: ${state} | 🔄 ${new Date().toLocaleTimeString()}
                     </div>
                 </div>`;
             }).join('');
         }
 
-        // Автообновление раз в 2 минуты
-        setInterval(fetchStatuses, 120000);
         fetchStatuses();
+        setInterval(fetchStatuses, 120000); // автообновление раз в 2 минуты
     </script>
 </body>
 </html>
