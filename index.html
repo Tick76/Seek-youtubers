@@ -52,15 +52,22 @@
         .btn-refresh:hover { background: #f79a55; }
         .footer-note { margin-top: 20px; font-size: 0.75rem; color: var(--text-secondary); text-align: center; }
         .raw-info { font-size: 0.7rem; color: var(--text-secondary); margin-top: 8px; }
+        .proxy-switch { margin-top: 10px; }
+        .proxy-switch button { background: #333; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; margin: 0 5px; font-family: inherit; }
     </style>
 </head>
 <body>
     <div class="container" id="cardsContainer">Загрузка...</div>
-    <button class="btn-refresh" onclick="fetchStatuses(true)">🔄 Сбросить кеш и проверить</button>
-    <button class="btn-refresh" style="background:#444; color:#fff;" onclick="fetchStatuses(false)">Обычное обновление</button>
+    <div class="btn-refresh" onclick="fetchStatuses()">🔄 Обновить сейчас</div>
+    <div class="proxy-switch">
+        <span style="color:var(--text-secondary)">Прокси: </span>
+        <button onclick="setProxy(0)">AllOrigins</button>
+        <button onclick="setProxy(1)">CorsProxy.io</button>
+        <button onclick="setProxy(2)">Прямой (не сработает)</button>
+    </div>
     <div class="footer-note">
-        Статусы из Steam API (автообновление раз в 60 сек).<br>
-        Открой консоль (F12), чтобы увидеть сырые данные от API.
+        Статусы через Steam API с CORS-прокси.<br>
+        Если не работает — попробуй другой прокси или проверь ключ.
     </div>
 
     <script>
@@ -70,38 +77,42 @@
             { steamid: '76561199804148206', name: 'СЕДАЯ ВОРОНА', handle: '' }
         ];
 
-        // Расшифровка personastate
-        function getPersonaStateText(state) {
-            switch(state) {
-                case 0: return 'Offline (0)';
-                case 1: return 'Online (1)';
-                case 2: return 'Busy (2)';
-                case 3: return 'Away (3)';
-                case 4: return 'Snooze (4)';
-                case 5: return 'Looking to trade (5)';
-                case 6: return 'Looking to play (6)';
-                default: return `Unknown (${state})`;
-            }
+        // Прокси-серверы
+        const PROXIES = [
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            (url) => url  // прямой запрос (скорее всего упадет с CORS)
+        ];
+        let currentProxy = 0;
+
+        function setProxy(index) {
+            currentProxy = index;
+            fetchStatuses();
         }
 
-        async function fetchStatuses(forceNoCache = false) {
+        async function fetchStatuses() {
             const container = document.getElementById('cardsContainer');
-            container.innerHTML = 'Обновление...';
+            container.innerHTML = 'Запрос через ' + (currentProxy === 2 ? 'прямой запрос' : 'прокси ' + (currentProxy+1)) + '...';
 
             const ids = USERS.map(u => u.steamid).join(',');
-            const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${API_KEY}&steamids=${ids}`;
+            const apiUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${API_KEY}&steamids=${ids}`;
 
             try {
-                const fetchOptions = forceNoCache ? { cache: 'no-cache' } : {};
-                const response = await fetch(url, fetchOptions);
-                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const proxyUrl = PROXIES[currentProxy](apiUrl);
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                console.log('Steam API raw response:', data); // 👈 выводим в консоль
+                console.log('Steam API response:', data);
                 if (!data.response || !data.response.players) throw new Error('Пустые данные');
                 renderCards(data.response.players);
             } catch (err) {
-                container.innerHTML = `<div style="color:#f78166;">❌ ${err.message}</div>`;
                 console.error(err);
+                container.innerHTML = `
+                    <div style="color:#f78166; text-align:center;">
+                        ❌ Ошибка: ${err.message}<br>
+                        <small>Попробуй другой прокси или проверь ключ.</small><br>
+                        <small>Прямая ссылка для проверки: <a href="${apiUrl}" target="_blank">открыть</a></small>
+                    </div>`;
             }
         }
 
@@ -109,13 +120,9 @@
             const container = document.getElementById('cardsContainer');
             container.innerHTML = apiPlayers.map(p => {
                 const state = p.personastate;
-                // Определяем отображаемый статус
                 let statusClass, statusText, icon;
                 if (state === 0) {
                     statusClass = 'offline'; statusText = 'Не в сети'; icon = '⚫';
-                } else if (state === 1 || state === 4 || state === 5 || state === 6) {
-                    // 1,4,5,6 — всё равно считается "в сети"
-                    statusClass = 'online'; statusText = 'В сети'; icon = '🟢';
                 } else if (state === 3) {
                     statusClass = 'in-game'; statusText = 'В игре'; icon = '🔵';
                 } else {
@@ -126,10 +133,6 @@
                 const gameIcon = game ? (game.toLowerCase().includes('scrap') ? '🔧' : '🎮') : '💤';
                 const gameDisplay = game || '—';
                 const avatar = p.avatarfull || p.avatar || '';
-
-                // Дополнительная сырая информация о статусе
-                const rawState = getPersonaStateText(state);
-                const lastLogoff = p.lastlogoff ? new Date(p.lastlogoff * 1000).toLocaleString() : 'неизвестно';
 
                 return `
                 <div class="card">
@@ -155,17 +158,15 @@
                         </div>
                     </div>
                     <div class="raw-info">
-                        <div>📋 personastate: ${rawState}</div>
-                        <div>🕒 Был в сети: ${lastLogoff}</div>
-                        <div>🔍 Проверено: ${new Date().toLocaleTimeString()}</div>
+                        📋 Статус: ${state} | 🔄 ${new Date().toLocaleTimeString()}
                     </div>
                 </div>`;
             }).join('');
         }
 
-        // Первый запуск и автообновление
-        fetchStatuses(false);
-        setInterval(() => fetchStatuses(false), 60000);
+        // Автообновление раз в 2 минуты
+        setInterval(fetchStatuses, 120000);
+        fetchStatuses();
     </script>
 </body>
 </html>
